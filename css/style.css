@@ -26,11 +26,13 @@ body {
 }
 
 #video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: rotateY(180deg); /* Espelha a imagem para parecer um espelho */
-    display: none; /* Inicialmente escondido */
+    /* Mantém a proporção original sem cortes */
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Alterado de 'cover' para 'contain' */
+    transform: rotateY(180deg);
+    display: none;
+    background-color: black; /* Fundo para áreas não preenchidas */
 }
 
 #message {
@@ -43,7 +45,7 @@ body {
     background-color: rgba(0, 0, 0, 0.5);
     padding: 10px;
     font-family: Arial, sans-serif;
-    display: none; /* Inicialmente escondido */
+    display: none;
 }
 
 #permission-button {
@@ -63,20 +65,4 @@ body {
 
 #permission-button:hover {
     background-color: #45a049;
-}
-
-/* Estilo para orientação retrato */
-@media screen and (orientation: portrait) {
-    #video {
-        width: 100%;
-        height: auto;
-    }
-}
-
-/* Estilo para orientação paisagem */
-@media screen and (orientation: landscape) {
-    #video {
-        width: auto;
-        height: 100%;
-    }
 }
