@@ -26,11 +26,11 @@ body {
 }
 
 #video {
+    /* Mantém a proporção original da câmera */
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    transform: rotateY(180deg); /* Espelha a imagem para parecer um espelho */
-    display: none; /* Inicialmente escondido */
+    object-fit: contain; /* Troquei de 'cover' para 'contain' para evitar zoom */
+    background-color: black;
 }
 
 #message {
@@ -43,7 +43,6 @@ body {
     background-color: rgba(0, 0, 0, 0.5);
     padding: 10px;
     font-family: Arial, sans-serif;
-    display: none; /* Inicialmente escondido */
 }
 
 #permission-button {
@@ -63,20 +62,4 @@ body {
 
 #permission-button:hover {
     background-color: #45a049;
-}
-
-/* Estilo para orientação retrato */
-@media screen and (orientation: portrait) {
-    #video {
-        width: 100%;
-        height: auto;
-    }
-}
-
-/* Estilo para orientação paisagem */
-@media screen and (orientation: landscape) {
-    #video {
-        width: auto;
-        height: 100%;
-    }
 }
