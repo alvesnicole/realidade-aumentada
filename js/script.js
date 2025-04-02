@@ -3,80 +3,91 @@ document.addEventListener('DOMContentLoaded', function() {
     const message = document.getElementById('message');
     const permissionButton = document.getElementById('permission-button');
     
-    // Verifica se o navegador suporta a API de mídia
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showMessage('Seu navegador não suporta acesso à câmera');
-        return;
-    }
+    // Esconde a mensagem inicial
+    message.style.display = 'none';
     
-    // Configurações da câmera
+    // Configurações otimizadas para qualidade e proporção
     const constraints = {
         video: {
-            facingMode: 'environment', // Prefere a câmera traseira
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-        },
-        audio: false
+            facingMode: 'environment', // Prefere câmera traseira
+            width: { ideal: 1920 },   // Resolução ideal
+            height: { ideal: 1080 },
+            aspectRatio: 16/9,        // Força proporção comum
+            frameRate: { ideal: 30 }  // Frames por segundo
+        }
     };
     
-    // Evento do botão de permissão
     permissionButton.addEventListener('click', function() {
-        requestCameraAccess();
+        startCamera();
     });
     
-    // Tenta acessar a câmera automaticamente (alguns navegadores bloqueiam isso)
-    // requestCameraAccess();
-    
-    function requestCameraAccess() {
+    function startCamera() {
+        permissionButton.style.display = 'none';
+        message.style.display = 'block';
+        message.textContent = 'Acessando câmera...';
+        
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function(stream) {
-                // Sucesso - mostra o vídeo
-                permissionButton.style.display = 'none';
                 video.srcObject = stream;
-                video.style.display = 'block';
-                message.style.display = 'block';
-                message.textContent = 'Câmera ativada';
                 
-                // Depois de 3 segundos, esconde a mensagem
-                setTimeout(() => {
+                // Quando os metadados estiverem carregados
+                video.onloadedmetadata = function() {
+                    // Ajusta o vídeo para manter proporção correta
+                    adjustVideoSize();
+                    video.style.display = 'block';
                     message.style.display = 'none';
-                }, 3000);
+                    
+                    // Corrige orientação em alguns dispositivos
+                    if (shouldRotateVideo()) {
+                        video.style.transform = 'rotate(90deg)';
+                    }
+                };
+                
+                // Redimensiona quando a janela muda
+                window.addEventListener('resize', adjustVideoSize);
             })
             .catch(function(error) {
-                // Tratamento de erros
-                console.error('Erro ao acessar a câmera:', error);
-                
-                let errorMessage = 'Erro ao acessar a câmera';
-                if (error.name === 'NotAllowedError') {
-                    errorMessage = 'Permissão para acessar a câmera foi negada';
-                } else if (error.name === 'NotFoundError') {
-                    errorMessage = 'Nenhuma câmera encontrada';
-                } else if (error.name === 'NotReadableError') {
-                    errorMessage = 'Câmera já está em uso ou não pode ser acessada';
-                }
-                
-                showMessage(errorMessage);
+                console.error('Erro na câmera:', error);
                 permissionButton.style.display = 'block';
+                message.textContent = 'Erro: ' + getErrorMessage(error);
             });
     }
     
-    function showMessage(text) {
-        message.textContent = text;
-        message.style.display = 'block';
+    function adjustVideoSize() {
+        // Mantém a proporção correta do vídeo
+        const containerRatio = window.innerWidth / window.innerHeight;
+        const videoRatio = video.videoWidth / video.videoHeight;
+        
+        if (containerRatio > videoRatio) {
+            video.style.width = '100%';
+            video.style.height = 'auto';
+        } else {
+            video.style.width = 'auto';
+            video.style.height = '100%';
+        }
     }
     
-    // Trata mudanças de orientação
-    window.addEventListener('orientationchange', function() {
-        // Força redimensionamento do vídeo
-        video.style.width = '100%';
-        video.style.height = '100%';
-    });
+    function shouldRotateVideo() {
+        // Detecta se precisa rotacionar (para mobile em portrait)
+        return window.innerHeight > window.innerWidth && 
+               video.videoHeight > video.videoWidth;
+    }
     
-    // Mostra o botão se após 1 segundo a câmera ainda não foi ativada
+    function getErrorMessage(error) {
+        const errorMap = {
+            NotAllowedError: 'Permissão negada. Por favor, permita o acesso à câmera.',
+            NotFoundError: 'Nenhuma câmera encontrada.',
+            NotReadableError: 'Câmera já em uso ou não acessível.',
+            OverconstrainedError: 'Configuração não suportada.',
+            SecurityError: 'Bloqueado por configurações de segurança.'
+        };
+        return errorMap[error.name] || 'Não foi possível acessar a câmera.';
+    }
+    
+    // Tenta iniciar automaticamente em alguns navegadores
     setTimeout(() => {
         if (video.style.display !== 'block') {
             permissionButton.style.display = 'block';
-            message.style.display = 'block';
         }
-    }, 1000);
+    }, 500);
 });
