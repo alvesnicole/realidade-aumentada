@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Câmera em Tela Cheia</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Figuras Geométricas por Voz</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="camera-container">
         <video id="video" autoplay playsinline></video>
         <div id="message">Aguardando permissão para acessar a câmera...</div>
         <button id="permission-button">Ativar Câmera</button>
+        <div id="shapes-container"></div>
+        <div id="voice-status">Diga: "Círculo", "Quadrado", "Triângulo" ou "Retângulo"</div>
+        <button id="voice-button">🎤 Ativar Voz</button>
     </div>
 
-    <script src="js/script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
