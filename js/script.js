@@ -3,38 +3,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const message = document.getElementById('message');
     const permissionButton = document.getElementById('permission-button');
     const voiceButton = document.getElementById('voice-button');
+    const micPermissionButton = document.getElementById('mic-permission-button');
     const voiceStatus = document.getElementById('voice-status');
     const shapesContainer = document.getElementById('shapes-container');
     
-    // Configurações de reconhecimento de voz
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
+    // Verifica suporte às APIs
+    const isMediaSupported = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+    const isSpeechRecognitionSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
     
-    if (SpeechRecognition) {
+    if (!isMediaSupported) {
+        showMessage('Seu navegador não suporta acesso à câmera');
+        permissionButton.style.display = 'none';
+    }
+    
+    if (!isSpeechRecognitionSupported) {
+        voiceStatus.textContent = "Seu navegador não suporta reconhecimento de voz";
+        voiceButton.style.display = 'none';
+    }
+    
+    // Configurações de reconhecimento de voz
+    let recognition;
+    let isMicReady = false;
+    
+    if (isSpeechRecognitionSupported) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
         recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
         
         recognition.onstart = function() {
-            voiceStatus.textContent = "Ouvindo... Diga uma figura geométrica";
-            voiceButton.style.backgroundColor = "#f44336";
+            voiceButton.classList.add('listening');
+            voiceStatus.textContent = "Ouvindo... Diga: Círculo, Quadrado, Triângulo ou Retângulo";
         };
         
         recognition.onresult = function(event) {
-            const last = event.results.length - 1;
-            const command = event.results[last][0].transcript.toLowerCase().trim();
-            
+            const command = event.results[0][0].transcript.toLowerCase().trim();
             voiceStatus.textContent = `Você disse: "${command}"`;
             
-            // Mapeamento de comandos para figuras
             const shapesMap = {
-                'círculo': 'circle',
-                'circulo': 'circle',
+                'círculo': 'circle', 'circulo': 'circle',
                 'quadrado': 'square',
-                'triângulo': 'triangle',
-                'triangulo': 'triangle',
-                'retângulo': 'rectangle',
-                'retangulo': 'rectangle'
+                'triângulo': 'triangle', 'triangulo': 'triangle',
+                'retângulo': 'rectangle', 'retangulo': 'rectangle'
             };
             
             if (shapesMap[command]) {
@@ -45,30 +56,33 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         recognition.onerror = function(event) {
-            voiceStatus.textContent = "Erro no reconhecimento: " + event.error;
-            voiceButton.style.backgroundColor = "#2196F3";
+            voiceButton.classList.remove('listening');
+            if (event.error === 'not-allowed') {
+                voiceStatus.textContent = "Permissão para microfone negada";
+                micPermissionButton.style.display = 'block';
+                isMicReady = false;
+                voiceButton.disabled = true;
+            } else {
+                voiceStatus.textContent = "Erro: " + event.error;
+            }
         };
         
         recognition.onend = function() {
-            voiceButton.style.backgroundColor = "#2196F3";
+            voiceButton.classList.remove('listening');
         };
-    } else {
-        voiceButton.style.display = 'none';
-        voiceStatus.textContent = "Reconhecimento de voz não suportado neste navegador";
     }
     
     // Evento do botão de voz
     voiceButton.addEventListener('click', function() {
-        if (recognition) {
+        if (isMicReady && recognition) {
             recognition.start();
         }
     });
     
-    // Verifica suporte à API de mídia
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showMessage('Seu navegador não suporta acesso à câmera');
-        return;
-    }
+    // Evento do botão de permissão do microfone
+    micPermissionButton.addEventListener('click', function() {
+        requestMicrophoneAccess();
+    });
     
     // Configurações da câmera
     const constraints = {
@@ -80,11 +94,34 @@ document.addEventListener('DOMContentLoaded', function() {
         audio: false
     };
     
-    // Evento do botão de permissão
+    // Evento do botão de permissão da câmera
     permissionButton.addEventListener('click', function() {
         requestCameraAccess();
     });
     
+    // Tenta acessar a câmera automaticamente
+    requestCameraAccess();
+    
+    // Função para solicitar acesso ao microfone
+    function requestMicrophoneAccess() {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                // Para imediatamente os tracks de áudio (não vamos usá-los, só precisamos da permissão)
+                stream.getTracks().forEach(track => track.stop());
+                
+                micPermissionButton.style.display = 'none';
+                isMicReady = true;
+                voiceButton.disabled = false;
+                voiceStatus.textContent = "Microfone ativado. Toque no ícone e diga uma figura geométrica";
+            })
+            .catch(function(error) {
+                console.error('Erro ao acessar microfone:', error);
+                micPermissionButton.style.display = 'block';
+                voiceStatus.textContent = "Erro ao acessar microfone. Toque em 'Ativar Microfone' para tentar novamente.";
+            });
+    }
+    
+    // Função para solicitar acesso à câmera
     function requestCameraAccess() {
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function(stream) {
@@ -93,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 video.style.display = 'block';
                 message.style.display = 'block';
                 message.textContent = 'Câmera ativada';
+                
+                // Tenta ativar o microfone também
+                requestMicrophoneAccess();
                 
                 setTimeout(() => {
                     message.style.display = 'none';
@@ -112,6 +152,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 showMessage(errorMessage);
                 permissionButton.style.display = 'block';
+                
+                // Mesmo sem câmera, tenta ativar o microfone
+                requestMicrophoneAccess();
             });
     }
     
@@ -125,14 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const shape = document.createElement('div');
         shape.className = `shape ${shapeType}`;
         
-        // Posição aleatória na tela
-        const x = Math.random() * 80 + 10; // 10-90%
-        const y = Math.random() * 80 + 10; // 10-90%
+        const x = Math.random() * 80 + 10;
+        const y = Math.random() * 80 + 10;
         
         shape.style.left = `${x}%`;
         shape.style.top = `${y}%`;
         
-        // Estilos específicos para cada forma
         switch(shapeType) {
             case 'circle':
                 shape.style.width = '100px';
@@ -151,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 shape.style.borderLeft = '50px solid transparent';
                 shape.style.borderRight = '50px solid transparent';
                 shape.style.borderBottom = '100px solid rgba(0, 0, 255, 0.7)';
-                shape.style.backgroundColor = 'transparent';
                 break;
             case 'rectangle':
                 shape.style.width = '150px';
@@ -162,17 +202,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         shapesContainer.appendChild(shape);
         
-        // Remove a forma após 5 segundos
         setTimeout(() => {
             shape.remove();
         }, 5000);
     }
     
-    // Mostra o botão se após 1 segundo a câmera ainda não foi ativada
+    // Mostra os botões se após 1 segundo os recursos não foram ativados
     setTimeout(() => {
-        if (video.style.display !== 'block') {
+        if (video.style.display !== 'block' && isMediaSupported) {
             permissionButton.style.display = 'block';
             message.style.display = 'block';
+        }
+        
+        if (!isMicReady && isSpeechRecognitionSupported) {
+            micPermissionButton.style.display = 'block';
         }
     }, 1000);
 });
